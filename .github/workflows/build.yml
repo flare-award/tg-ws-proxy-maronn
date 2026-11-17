@@ -139,6 +139,43 @@ jobs:
           archive: true
           if-no-files-found: error
 
+  release-windows:
+    needs: [build-windows-x64]
+    runs-on: ubuntu-latest
+    if: >-
+      ${{ github.event.inputs.make_release == 'true'
+          && github.event.inputs.build_windows_x64 == 'true' }}
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: TgWsProxy-windows-x64
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: "TG WS Proxy ${{ github.event.inputs.version }} (Windows)"
+          prerelease: true
+          body: |
+            Неофициальная сборка форка `flare-award/tg-ws-proxy-maronn` (branch
+            `arena/199cb847-tg-ws-proxy-maronn`). Собрана из исходников проекта
+            Flowseal/tg-ws-proxy, сборка **без подписи** — SmartScreen покажет
+            предупреждение («Подробнее» → «Выполнить в любом случае»).
+
+            Что исправлено:
+            - автоматический переход CF-прокси/CF-worker на HTTP (порт 80), если
+              TLS блокируется (блокировка доменов 16.11.2026);
+            - ограничение перебора доменов и backoff, чтобы прокси не забивал
+              сокеты и не «вешал» интернет;
+            - перезапуск прокси больше не падает с `OSError(10048)`.
+
+            Полный список изменений — в PR #1.
+          files: dist/TgWsProxy_windows.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build-windows-arm64:
     runs-on: windows-11-arm
     if: ${{ github.event.inputs.build_windows_arm64 == 'true' }}
