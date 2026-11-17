@@ -127,12 +127,9 @@ Telegram Desktop → MTProto Proxy (127.0.0.1:1443) → WebSocket → Telegram D
 ## Благодарности
 
 - Оригинальный проект: [Flowseal/tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy)
-- Автор данного форка: [maronnix](https://github.com/maronnix)
-- Форк переработан с использованием ИИ
 
 ## Лицензия
 
-Проект распространяется под лицензией **MIT**.  
 Оригинальный код и идея принадлежат автору [Flowseal](https://github.com/Flowseal).  
 Данный форк является производной работой и распространяется на тех же условиях.
 
