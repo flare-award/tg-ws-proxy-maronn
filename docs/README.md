@@ -13,21 +13,25 @@
 
 ##
 
-# TG WS Proxy (форк maronnix)
+> [!TIP]
+>
+> ### [🎉 Поддержать меня](./RU/Funding.md)
+>
+> **USDT (TRC20)**: `TXPnKs2Ww1RD8JN6nChFUVmi5r2hqrWjuu`  
+> **BTC**: `bc1qr8vd6jelkyyry3m4mq6z5txdx4pl856fu6ss0w`  
+> **ETH**: `0x1417878fdc5047E670a77748B34819b9A49C72F1`  
 
-> [!NOTE]
+> [!CAUTION]
 >
-> ### О проекте
+> ### Реакция антивирусов
 >
-> Это **неофициальный форк** проекта [Flowseal/tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy).
+> Антивирусы часто ошибочно помечают приложение как вирус из-за упаковщика.  
+> Если вы не можете скачать из-за блокировки антивирусом, то:
 >
-> - **Автор форка:** [maronnix](https://github.com/maronnix)
-> - **Оригинальный репозиторий:** [Flowseal/tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy)
-> - Данный форк был **переработан с использованием ИИ** (правки кода, документации и структуры репозитория).
-> - Форк распространяется на условиях оригинальной лицензии **MIT** (см. раздел «Лицензия»).
+> 1) **Попробуйте скачать версию для Windows 7 (по функциональности она не отличается)**
+> 2) Отключите антивирус на время скачивания, добавьте файл в исключения и включите обратно  
 >
-> Все претензии, вопросы и предложения по **этому форку** — к его автору (maronnix).  
-> За оригинальный проект отвечает его автор — Flowseal.
+> Всегда проверяйте, что скачиваете из интернета, тем более из непроверенных источников. Всегда лучше смотреть на детекты широко известных антивирусов на VirusTotal
 
 # TG WS Proxy
 
@@ -55,7 +59,7 @@
 
 ## Windows: быстрый вход
 
-Перейдите на [страницу релизов](https://github.com/maronnix/tg-ws-proxy/releases) и скачайте:
+Перейдите на [страницу релизов](https://github.com/Flowseal/tg-ws-proxy/releases) и скачайте:
 
 - `TgWsProxy_windows.exe` (Windows 10+ x64)
 - `TgWsProxy_windows_arm64.exe` (Windows 10+ ARM64)
@@ -95,7 +99,10 @@
    - **Secret:** из настроек или логов
 
 ## Как это работает
+
+```
 Telegram Desktop → MTProto Proxy (127.0.0.1:1443) → WebSocket → Telegram DC
+```
 
 1. Приложение поднимает MTProto прокси на `127.0.0.1:1443`
 2. Перехватывает подключения к IP-адресам Telegram
@@ -124,13 +131,14 @@ Telegram Desktop → MTProto Proxy (127.0.0.1:1443) → WebSocket → Telegram D
 - Apple Silicon macOS 11.0+
 - Linux x86_64 (требуется AppIndicator для системного трея)
 
-## Благодарности
+## Контрибьюторы
 
-- Оригинальный проект: [Flowseal/tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy)
+Спасибо всем, кто помогает развивать проект ❤️
+
+<a href="https://github.com/Flowseal/tg-ws-proxy/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Flowseal/tg-ws-proxy" />
+</a>
 
 ## Лицензия
 
-Оригинальный код и идея принадлежат автору [Flowseal](https://github.com/Flowseal).  
-Данный форк является производной работой и распространяется на тех же условиях.
-
-Полный текст лицензии: [MIT License](../LICENSE)
+[MIT License](../LICENSE)
