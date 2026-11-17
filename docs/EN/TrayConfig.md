@@ -22,6 +22,7 @@ The tray application stores data in:
   "check_updates": true,
   "cfproxy": true,
   "h2": true,
+  "cf_plain_fallback": true,
   "cfproxy_user_domain_enabled": false,
   "cfproxy_user_domain": [],
   "cfproxy_worker_enabled": false,
@@ -35,3 +36,5 @@ The tray application stores data in:
 
 The `check_updates` key: when `true`, performs a request to GitHub and compares the current version with the latest release (notification and link to download page only).  
 On Windows, the config may contain `autostart` (auto-start on system login).
+
+Key `cf_plain_fallback` (default `true`): if TLS to a CF-proxy/CF-worker domain is blocked (times out), the proxy retries the same domain over HTTP (port 80) once and remembers the working route until restart. Can be disabled with the "Fall back to HTTP when TLS is blocked" checkbox.

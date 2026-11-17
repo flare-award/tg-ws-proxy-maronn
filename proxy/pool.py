@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Tuple
 from .raw_websocket import RawWebSocket, WsHandshakeError
 from .stats import stats
 from .config import proxy_config
+from .cf_connect import connect_cf_ws
 from .utils import ws_domains, DC_DEFAULT_IPS, WS_PATH, WS_PATH_TEST
 
 log = logging.getLogger('tg-mtproto-proxy')
@@ -378,9 +379,7 @@ class _CfWorkerPool:
         path = f'/apiws?{query}'
         for worker_domain in self.available_domains(worker_domains):
             try:
-                ws = await RawWebSocket.connect(
-                    worker_domain, worker_domain, timeout=8, path=path,
-                    secure=not proxy_config.disable_secure)
+                ws = await connect_cf_ws(worker_domain, path, timeout=8)
                 return ws, worker_domain
             except Exception as exc:
                 log.debug("CF worker pool connect DC%d via %s for %s failed: %r",

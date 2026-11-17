@@ -22,6 +22,7 @@ _TRAY_DEFAULTS_COMMON: Dict[str, Any] = {
     "pool_size": 4,
     "cfproxy": True,
     "h2": True,
+    "cf_plain_fallback": True,
     "cfproxy_user_domain_enabled": False,
     "cfproxy_user_domain": [],
     "cfproxy_worker_enabled": False,

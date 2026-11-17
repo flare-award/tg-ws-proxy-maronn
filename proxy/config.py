@@ -6,7 +6,7 @@ import socket as _socket
 import threading
 
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Set
 from urllib.request import Request
 
 from .balancer import balancer
@@ -71,6 +71,7 @@ class ProxyConfig:
     cfproxy_user_domains: List[str] = field(default_factory=list)
     cfproxy_worker_domains: List[str] = field(default_factory=list)
     cfproxy_h2_media: bool = True
+    cf_plain_fallback: bool = True
     disable_secure: bool = False
     fake_tls_domain: str = ''
     proxy_protocol: bool = False
@@ -83,6 +84,31 @@ class ProxyConfig:
 
 
 proxy_config = ProxyConfig()
+
+# Hosts where TLS looks blocked but plain HTTP works. Learned at runtime so a
+# second connection does not have to wait for the TLS timeout again.
+_plain_transport_hosts: Set[str] = set()
+
+
+def prefers_plain_transport(host: str) -> bool:
+    """True when a host is known to work only over plain HTTP."""
+    return host in _plain_transport_hosts
+
+
+def remember_plain_transport(host: str) -> bool:
+    """Remember a plain-HTTP route; returns True only on the first switch."""
+    if not host or host in _plain_transport_hosts:
+        return False
+    _plain_transport_hosts.add(host)
+    return True
+
+
+def forget_plain_transport(host: str) -> None:
+    _plain_transport_hosts.discard(host)
+
+
+def reset_plain_transport_hints() -> None:
+    _plain_transport_hosts.clear()
 
 
 def coerce_domain_list(value) -> List[str]:

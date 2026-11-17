@@ -15,6 +15,10 @@ class _Balancer:
         
         self.domains = domains_list[:]
 
+        if not self.domains:
+            self._dc_to_domain = {}
+            return
+
         self._dc_to_domain = {
             dc_id: random.choice(self.domains)
             for dc_id in (1, 2, 3, 4, 5, 203)

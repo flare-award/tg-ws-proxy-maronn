@@ -23,7 +23,9 @@ if __name__ == '__main__' and (__package__ is None or __package__ == ''):
 from .utils import *
 from .stats import stats
 from .config import proxy_config, parse_dc_ip_list, start_cfproxy_domain_refresh, coerce_domain_list
-from .bridge import MsgSplitter, CryptoCtx, do_fallback, bridge_ws_reencrypt, reset_tcp_backoff
+from .bridge import (MsgSplitter, CryptoCtx, do_fallback, bridge_ws_reencrypt,
+                     reset_cf_backoff, reset_tcp_backoff)
+from .cf_connect import reset_cf_connect_state
 from .raw_websocket import set_sock_opts
 from .fake_tls import (
     proxy_to_masking_domain, verify_client_hello, parse_client_hello, build_server_hello,
@@ -389,6 +391,8 @@ async def _run(stop_event: Optional[asyncio.Event] = None):
     _server_stop_event = stop_event
 
     reset_tcp_backoff()
+    reset_cf_backoff()
+    reset_cf_connect_state()
     ws_pool.reset()
     cf_worker_pool.reset()
     _client_tasks.clear()
@@ -465,6 +469,8 @@ async def _run(stop_event: Optional[asyncio.Event] = None):
         log.info('  CF H2 media:   enabled')
     if proxy_config.disable_secure:
         log.info("  No secure:     enabled (port 80 for CF proxy/worker)")
+    elif proxy_config.cf_plain_fallback:
+        log.info("  CF plain fallback: enabled (port 80 if TLS is blocked)")
     log.info("=" * 60)
     log.info("  Connect:")
     if ftls:
@@ -637,6 +643,9 @@ def main():
                     help='Disable Cloudflare proxy fallback')
     ap.add_argument('--no-secure', action='store_true',
                         help='Use 80 port for CF-proxy and CF-worker connections')
+    ap.add_argument('--no-plain-fallback', action='store_true',
+                    help='Do not fall back to plain HTTP when TLS to a '
+                         'CF-proxy/CF-worker domain is blocked')
     ap.add_argument('--fake-tls-domain', type=str, default='',
                     metavar='DOMAIN',
                     help='Enable Fake TLS (ee-secret) masking with the given '
@@ -690,6 +699,7 @@ def main():
     proxy_config.cfproxy_worker_domains = coerce_domain_list(args.cfproxy_worker_domain)
     proxy_config.cfproxy_h2_media = not args.no_h2
     proxy_config.disable_secure = args.no_secure
+    proxy_config.cf_plain_fallback = not args.no_plain_fallback
     proxy_config.fake_tls_domain = args.fake_tls_domain.strip()
     proxy_config.proxy_protocol = args.proxy_protocol
     proxy_config.force_test_dc = args.force_test_dc

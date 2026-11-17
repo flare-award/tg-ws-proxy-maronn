@@ -9,8 +9,9 @@ from urllib.parse import urlencode
 from .utils import *
 from .stats import stats
 from .balancer import balancer
-from .config import proxy_config
+from .config import proxy_config, reset_plain_transport_hints
 from .raw_websocket import RawWebSocket
+from .cf_connect import CfAttemptBudget, CfFailureBackoff, connect_cf_ws
 from .pool import cf_worker_pool
 from .network_debug import WsActivity
 from .cf_h2 import bridge_h2
@@ -25,11 +26,24 @@ _tcp_failures: Dict[Tuple[str, int], int] = {}
 _tcp_retry_after: Dict[Tuple[str, int], float] = {}
 _tcp_connecting: Set[Tuple[str, int]] = set()
 
+# One CF sweep may try only a few domains and only for this long. During a
+# country-wide block every domain times out, so walking all 20 of them for
+# every Telegram reconnect is what floods the machine with sockets.
+CF_SWEEP_BUDGET = 15.0
+CF_SWEEP_MAX_DOMAINS = 4
+CF_SWEEP_WAIT = 5.0
+_cf_backoff = CfFailureBackoff()
+
 
 def reset_tcp_backoff() -> None:
     _tcp_failures.clear()
     _tcp_retry_after.clear()
     _tcp_connecting.clear()
+
+
+def reset_cf_backoff() -> None:
+    _cf_backoff.reset()
+    reset_plain_transport_hints()
 
 
 class CryptoCtx:
@@ -212,9 +226,7 @@ async def _cfproxy_worker_fallback(reader, writer, relay_init, label,
                      label, dc, media_tag, worker_domain, fallback_dst)
 
             try:
-                ws = await RawWebSocket.connect(worker_domain, worker_domain,
-                                                timeout=10.0, path=path, 
-                                                secure=not proxy_config.disable_secure)
+                ws = await connect_cf_ws(worker_domain, path)
                 break
             except Exception as exc:
                 cf_worker_pool.report_failure(worker_domain, exc)
@@ -243,18 +255,37 @@ async def _cfproxy_fallback(reader, writer, relay_init, label,
 
     log.info("[%s] DC%d%s -> trying CF proxy",
             label, dc, media_tag)
+    if not _cf_backoff.begin(dc):
+        # Another client connection is already probing this DC. Reuse its
+        # verdict instead of starting a parallel sweep.
+        if not await _cf_backoff.wait(dc, CF_SWEEP_WAIT):
+            log.debug("[%s] DC%d%s CF proxy busy, not starting a second sweep",
+                      label, dc, media_tag)
+            return False
+        if not _cf_backoff.begin(dc):
+            log.debug("[%s] DC%d%s CF proxy skipped (backoff)",
+                      label, dc, media_tag)
+            return False
     connect_started = time.monotonic()
+    budget = CfAttemptBudget(CF_SWEEP_BUDGET, CF_SWEEP_MAX_DOMAINS)
 
-    for base_domain in balancer.get_domains_for_dc(dc):
-        domain = f'kws{dc}.{base_domain}'
-        try:
-            ws = await RawWebSocket.connect(domain, domain, timeout=10.0, 
-                                            secure=not proxy_config.disable_secure)
-            chosen_domain = base_domain
-            break
-        except Exception as exc:
-            log.warning("[%s] DC%d%s CF proxy failed: %s",
-                        label, dc, media_tag, repr(exc))
+    try:
+        for base_domain in balancer.get_domains_for_dc(dc):
+            if not budget.take():
+                log.debug(
+                    "[%s] DC%d%s CF sweep stopped after %d attempt(s)",
+                    label, dc, media_tag, budget.attempts)
+                break
+            domain = f'kws{dc}.{base_domain}'
+            try:
+                ws = await connect_cf_ws(domain)
+                chosen_domain = base_domain
+                break
+            except Exception as exc:
+                log.warning("[%s] DC%d%s CF proxy failed: %s",
+                            label, dc, media_tag, repr(exc))
+    finally:
+        _cf_backoff.end(dc, success=ws is not None)
 
     if ws is None:
         return False
