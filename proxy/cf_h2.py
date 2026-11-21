@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Set, Tuple
 import httpx
 
 from .balancer import balancer
+from .config import prefers_plain_transport, proxy_config
 from .h2_transport import H2Transport
 from .stats import stats
 from .utils import (
@@ -894,6 +895,15 @@ class CfH2Pool:
                 lane = self.lanes.get(host)
                 if time.monotonic() < max(self.failed_until.get(host, 0),
                                          lane.failed_until if lane else 0):
+                    continue
+                if (proxy_config.cf_plain_fallback
+                        and prefers_plain_transport(host)
+                        and (lane is None
+                             or lane.failed_until > time.monotonic())):
+                    # TLS to this host is blocked; HTTP/2 needs TLS, so let
+                    # the WS fallback use plain HTTP instead of timing out.
+                    log.debug('[%s] H2 DC%d skip %s (plain HTTP route is '
+                              'known to work)', label, dc, host)
                     continue
                 if lane is None:
                     self.next_lane += 1

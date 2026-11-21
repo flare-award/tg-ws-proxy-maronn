@@ -70,6 +70,7 @@ class TrayConfigFormWidgets:
     cfproxy_user_domain_var: Optional[Any] = None
     cfproxy_worker_enabled_var: Optional[Any] = None
     cfproxy_worker_domain_var: Optional[Any] = None
+    cf_plain_fallback_var: Optional[Any] = None
     appearance_var: Optional[Any] = None
     language_var: Optional[Any] = None
 
@@ -92,7 +93,8 @@ def install_tray_config_form(
     appearance_var, language_var = _create_interface(ctk, frame, theme, cfg, default_config)
     host_var, port_var, secret_var = _create_connection(ctk, frame, theme, cfg, default_config)
     dc_textbox = _create_dc(ctk, frame, theme, cfg, default_config)
-    cfproxy_var, h2_var, cf_custom_cb_var, cfproxy_user_domain_var = _create_cfproxy(
+    (cfproxy_var, h2_var, cf_custom_cb_var, cfproxy_user_domain_var,
+     cf_plain_fallback_var) = _create_cfproxy(
         ctk, frame, theme, cfg, default_config, no_secure_var,
     )
     cfproxy_worker_enabled_var, cfproxy_worker_domain_var = _create_cfworker(
@@ -115,6 +117,7 @@ def install_tray_config_form(
         cfproxy_user_domain_var=cfproxy_user_domain_var,
         cfproxy_worker_enabled_var=cfproxy_worker_enabled_var,
         cfproxy_worker_domain_var=cfproxy_worker_domain_var,
+        cf_plain_fallback_var=cf_plain_fallback_var,
         appearance_var=appearance_var,
         language_var=language_var,
     )
@@ -307,9 +310,23 @@ def _create_cfproxy(ctk, frame, theme, cfg, default_config, no_secure_var):
     h2_cb.pack(anchor="w", pady=(2, 8))
     attach_ctk_tooltip(h2_cb, t("tip.h2"))
 
+    plain_fallback_var = ctk.BooleanVar(
+        master=frame,
+        value=cfg.get(
+            "cf_plain_fallback", default_config.get("cf_plain_fallback", True)
+        ),
+    )
+    plain_cb = create_checkbox(
+        ctk, cf_inner, theme, t("label.cf_plain_fallback"), plain_fallback_var
+    )
+    plain_cb.pack(anchor="w", pady=(0, 8))
+    attach_ctk_tooltip(plain_cb, t("tip.cf_plain_fallback"))
+
     def _sync_h2(*_):
         enabled = cfproxy_var.get() and not no_secure_var.get() and not cfg.get("force_test_dc", False)
         h2_cb.configure(state="normal" if enabled else "disabled")
+        plain_enabled = cfproxy_var.get() and not no_secure_var.get()
+        plain_cb.configure(state="normal" if plain_enabled else "disabled")
 
     cfproxy_var.trace_add("write", _sync_h2)
     no_secure_var.trace_add("write", _sync_h2)
@@ -350,7 +367,8 @@ def _create_cfproxy(ctk, frame, theme, cfg, default_config, no_secure_var):
 
     cf_custom_cb_var.trace_add("write", _sync_domain_entry)
     _sync_domain_entry()
-    return cfproxy_var, h2_var, cf_custom_cb_var, cfproxy_user_domain_var
+    return (cfproxy_var, h2_var, cf_custom_cb_var, cfproxy_user_domain_var,
+            plain_fallback_var)
 
 
 def _create_cfworker(ctk, frame, theme, cfg, default_config, no_secure_var):
@@ -595,8 +613,8 @@ def validate_config_form(
     for key, var in widgets.advanced_vars.items():
         values[key] = var.get()
     for key in (
-        "check_updates", "cfproxy", "h2", "cfproxy_user_domain_enabled",
-        "cfproxy_worker_enabled", "no_secure",
+        "check_updates", "cfproxy", "h2", "cf_plain_fallback",
+        "cfproxy_user_domain_enabled", "cfproxy_worker_enabled", "no_secure",
     ):
         var = getattr(widgets, f"{key}_var")
         if var is not None:

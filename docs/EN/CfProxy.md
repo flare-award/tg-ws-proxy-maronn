@@ -4,6 +4,20 @@ An alternative, free connection method is proxying through Cloudflare, which can
   
 The proxy restores access to content that previously wouldn't load (reactions, certain stickers). If you are using a non-Premium account and photos/videos still fail to load, leave only `4:149.154.167.220` in the `DC → IP` block. If the CF proxy works, media will start loading again.
 
+## Since 16 November 2026 the default domains are blocked
+
+The Russian regulator blocked the default CF-proxy domains (the `*.co.uk` ones) by SNI. TLS connections to them now time out (`TimeoutError` in the log) and Telegram is stuck on "Connecting…".
+
+Starting with this build the proxy **falls back to plain HTTP (port 80) automatically** when the TLS handshake with a CF-proxy domain times out. The log shows `switched CF route to plain HTTP`; no manual action is needed. Hosts that switched are remembered until restart, so they no longer wait for the TLS timeout.
+
+The fallback can be disabled with the **"Fall back to HTTP when TLS is blocked"** checkbox in the **Cloudflare Proxy** settings (or `cf_plain_fallback: false` in `config.json`).
+
+If even HTTP does not help:
+
+1. Toggle **"Disable TLS for CF-proxy and CF-worker"** on (or off, if it is already on).
+2. If you use zapret, add `co.uk` to `list-general-user` (so zapret processes these domains), or to `list-exclude-user`. Try both.
+3. Set up your own Cloudflare Worker — the most reliable option. Ready-to-paste code is in [`cloudflare-worker/worker.js`](../../cloudflare-worker/worker.js); see [`cloudflare-worker/README.md`](../../cloudflare-worker/README.md) and [CfWorker.md](CfWorker.md).
+
 ## Why should I set up my own domain?
 
 Cloudflare limits the number of simultaneous WebSocket (WS) connections. The default domain could stop working at any moment.
