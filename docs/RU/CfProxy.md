@@ -16,7 +16,7 @@
 
 1. Включите (или, наоборот, выключите) галочку **«Выключить TLS для CF-прокси и CF-worker»**.
 2. Если используете zapret — добавьте `co.uk` в файл `list-general-user` (то есть пусть zapret обрабатывает эти домены) либо наоборот в `list-exclude-user`. Проверьте оба варианта.
-3. Поднимите свой Cloudflare Worker по инструкции [CfWorker.md](CfWorker.md) — это самый надёжный вариант.
+3. Поднимите свой Cloudflare Worker — это самый надёжный вариант. Готовый код лежит в [`cloudflare-worker/worker.js`](../../cloudflare-worker/worker.js), пошаговая инструкция — в [`cloudflare-worker/README.md`](../../cloudflare-worker/README.md) и [CfWorker.md](CfWorker.md).
 
 ## Зачем мне настраивать свой домен?
 

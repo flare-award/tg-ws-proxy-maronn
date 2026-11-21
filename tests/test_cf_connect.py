@@ -9,8 +9,8 @@ from proxy.balancer import balancer
 from proxy.bridge import _cfproxy_fallback, reset_cf_backoff
 from proxy.cf_connect import CfAttemptBudget, CfFailureBackoff
 from proxy.config import (
-    prefers_plain_transport, proxy_config, remember_plain_transport,
-    reset_plain_transport_hints,
+    forget_plain_transport, prefers_plain_transport, proxy_config,
+    remember_plain_transport, reset_plain_transport_hints,
 )
 from proxy.raw_websocket import WsHandshakeError
 
@@ -106,6 +106,17 @@ class _PlainFallbackTest(unittest.IsolatedAsyncioTestCase):
                 await cf_connect.connect_cf_ws('kws4.example.org'), 'tls')
         self.assertEqual(states, [False, True])
 
+    async def test_plain_hint_is_shared_between_dcs(self):
+        remember_plain_transport('kws3.example.co.uk')
+        self.assertTrue(prefers_plain_transport('kws3.example.co.uk'))
+        self.assertTrue(prefers_plain_transport('kws2.example.co.uk'))
+        self.assertFalse(prefers_plain_transport('kws2.other.co.uk'))
+
+        # A rejected host retries TLS, but the base hint stays for other DCs.
+        forget_plain_transport('kws2.example.co.uk')
+        self.assertFalse(prefers_plain_transport('kws2.example.co.uk'))
+        self.assertTrue(prefers_plain_transport('kws3.example.co.uk'))
+
     async def test_parallel_connects_are_bounded(self):
         active = 0
         peak = 0
@@ -199,6 +210,19 @@ class _CfProxyFallbackTest(unittest.IsolatedAsyncioTestCase):
                 None, None, b'init', 'label', mock.Mock(), 2, False)
         self.assertFalse(ok)
         self.assertFalse(bridge._cf_backoff.available(2))
+
+    async def test_known_plain_domain_is_tried_first(self):
+        ws = mock.Mock()
+        ws.send = AsyncMock()
+        remember_plain_transport('kws1.beta.test')
+        with mock.patch.object(bridge, 'connect_cf_ws',
+                               new=AsyncMock(return_value=ws)) as connect, \
+                mock.patch.object(bridge, 'bridge_ws_reencrypt',
+                                  new=AsyncMock()):
+            ok = await _cfproxy_fallback(
+                None, None, b'init', 'label', mock.Mock(), 4, False)
+        self.assertTrue(ok)
+        self.assertEqual(connect.await_args_list[0].args[0], 'kws4.beta.test')
 
     async def test_successful_connection_resets_backoff(self):
         ws = mock.Mock()

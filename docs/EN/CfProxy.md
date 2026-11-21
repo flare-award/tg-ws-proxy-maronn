@@ -16,7 +16,7 @@ If even HTTP does not help:
 
 1. Toggle **"Disable TLS for CF-proxy and CF-worker"** on (or off, if it is already on).
 2. If you use zapret, add `co.uk` to `list-general-user` (so zapret processes these domains), or to `list-exclude-user`. Try both.
-3. Set up your own Cloudflare Worker following [CfWorker.md](CfWorker.md) — the most reliable option.
+3. Set up your own Cloudflare Worker — the most reliable option. Ready-to-paste code is in [`cloudflare-worker/worker.js`](../../cloudflare-worker/worker.js); see [`cloudflare-worker/README.md`](../../cloudflare-worker/README.md) and [CfWorker.md](CfWorker.md).
 
 ## Why should I set up my own domain?
 

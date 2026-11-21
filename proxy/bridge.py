@@ -9,7 +9,8 @@ from urllib.parse import urlencode
 from .utils import *
 from .stats import stats
 from .balancer import balancer
-from .config import proxy_config, reset_plain_transport_hints
+from .config import (plain_route_domains, proxy_config,
+                     reset_plain_transport_hints)
 from .raw_websocket import RawWebSocket
 from .cf_connect import CfAttemptBudget, CfFailureBackoff, connect_cf_ws
 from .pool import cf_worker_pool
@@ -269,14 +270,26 @@ async def _cfproxy_fallback(reader, writer, relay_init, label,
     connect_started = time.monotonic()
     budget = CfAttemptBudget(CF_SWEEP_BUDGET, CF_SWEEP_MAX_DOMAINS)
 
+    # Try base domains that already worked over plain HTTP for another DC
+    # first: the block is per domain name, so this is the fastest way for a
+    # "home" DC (usually DC2) to recover.
+    candidates = []
+    seen = set()
+    for base_domain in plain_route_domains():
+        seen.add(base_domain)
+        candidates.append((f'kws{dc}.{base_domain}', base_domain))
+    for base_domain in balancer.get_domains_for_dc(dc):
+        if base_domain in seen:
+            continue
+        candidates.append((f'kws{dc}.{base_domain}', base_domain))
+
     try:
-        for base_domain in balancer.get_domains_for_dc(dc):
+        for domain, base_domain in candidates:
             if not budget.take():
                 log.debug(
                     "[%s] DC%d%s CF sweep stopped after %d attempt(s)",
                     label, dc, media_tag, budget.attempts)
                 break
-            domain = f'kws{dc}.{base_domain}'
             try:
                 ws = await connect_cf_ws(domain)
                 chosen_domain = base_domain

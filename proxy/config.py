@@ -85,30 +85,60 @@ class ProxyConfig:
 
 proxy_config = ProxyConfig()
 
-# Hosts where TLS looks blocked but plain HTTP works. Learned at runtime so a
-# second connection does not have to wait for the TLS timeout again.
+# Hosts and base domains where TLS looks blocked but plain HTTP works.
+# The block is applied to the domain name, so a route learned for
+# kws3.<domain> almost always works for kws2.<domain> too. Hints are shared
+# between DCs so an account on DC2 does not have to rediscover the same
+# blocked domains from scratch.
 _plain_transport_hosts: Set[str] = set()
+_plain_transport_bases: Set[str] = set()
+_plain_transport_rejected: Set[str] = set()
+
+
+def _cf_base_domain(host: str) -> str:
+    """kws2.example.org -> example.org; other hosts are returned as is."""
+    head, sep, rest = host.partition('.')
+    if sep and head.startswith('kws') and head[3:].isdigit():
+        return rest
+    return host
 
 
 def prefers_plain_transport(host: str) -> bool:
     """True when a host is known to work only over plain HTTP."""
-    return host in _plain_transport_hosts
+    if host in _plain_transport_hosts:
+        return True
+    if host in _plain_transport_rejected:
+        return False
+    return _cf_base_domain(host) in _plain_transport_bases
 
 
 def remember_plain_transport(host: str) -> bool:
     """Remember a plain-HTTP route; returns True only on the first switch."""
-    if not host or host in _plain_transport_hosts:
+    if not host:
         return False
+    first = host not in _plain_transport_hosts
     _plain_transport_hosts.add(host)
-    return True
+    _plain_transport_bases.add(_cf_base_domain(host))
+    _plain_transport_rejected.discard(host)
+    return first
 
 
 def forget_plain_transport(host: str) -> None:
     _plain_transport_hosts.discard(host)
+    if host:
+        # Keep the base-domain hint for other DCs, but retry TLS for this one.
+        _plain_transport_rejected.add(host)
+
+
+def plain_route_domains() -> List[str]:
+    """Base domains already known to work over plain HTTP."""
+    return list(_plain_transport_bases)
 
 
 def reset_plain_transport_hints() -> None:
     _plain_transport_hosts.clear()
+    _plain_transport_bases.clear()
+    _plain_transport_rejected.clear()
 
 
 def coerce_domain_list(value) -> List[str]:
